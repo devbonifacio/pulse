@@ -30,7 +30,9 @@
         {
           "cameraPermission": "PULSE precisa da câmera pra você registrar seus momentos reais."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-splash-screen"
     ]
   }
 }

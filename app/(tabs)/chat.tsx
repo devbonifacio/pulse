@@ -7,6 +7,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { socket } from '../../services/socket';
 import api from '../../services/api';
 import { Avatar } from '../../components/Avatar';
+import { palette, typography, radius, spacing } from '../../constants/theme';
 
 interface UserItem {
   _id: string;
@@ -33,24 +34,15 @@ export default function Chat() {
     }
   };
 
-  // Recarrega ao focar
-  useFocusEffect(
-    useCallback(() => {
-      fetchUsers();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { fetchUsers(); }, []));
 
-  // Escuta quem tá online em tempo real
   useEffect(() => {
     const handleOnline = (ids: string[]) => setOnlineIds(ids);
     socket.on('users:online', handleOnline);
     return () => { socket.off('users:online', handleOnline); };
   }, []);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchUsers();
-  }, []);
+  const onRefresh = useCallback(() => { setRefreshing(true); fetchUsers(); }, []);
 
   const openConversation = (user: UserItem) => {
     router.push({
@@ -65,52 +57,98 @@ export default function Chat() {
     return (
       <TouchableOpacity
         onPress={() => openConversation(item)}
+        activeOpacity={0.7}
         style={{
-          flexDirection: 'row', alignItems: 'center', padding: 16,
-          borderBottomWidth: 1, borderBottomColor: '#1e1e1e', gap: 14,
+          flexDirection: 'row', alignItems: 'center',
+          paddingVertical: 14, paddingHorizontal: spacing.base,
+          borderBottomWidth: 1, borderBottomColor: palette.black_subtle,
+          gap: 14,
+          // Borda esquerda verde se online (assinatura PULSE)
+          borderLeftWidth: isOnline ? 2 : 0,
+          borderLeftColor: isOnline ? palette.green : 'transparent',
+          paddingLeft: isOnline ? spacing.base - 2 : spacing.base,
         }}
       >
-        <Avatar name={item.name} size={52} online={isOnline} />
+        <Avatar name={item.name} size={48} online={isOnline} />
 
         <View style={{ flex: 1 }}>
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>{item.name}</Text>
-          <Text style={{ color: isOnline ? '#10B981' : '#555', fontSize: 13, marginTop: 3 }}>
-            {isOnline ? '● online agora' : `@${item.username}`}
+          <Text style={{
+            fontFamily: typography.fonts.mono,
+            fontSize: 14,
+            color: palette.white,
+            letterSpacing: 0.3,
+          }}>
+            {item.name}
+          </Text>
+          <Text style={{
+            fontFamily: typography.fonts.mono,
+            fontSize: 11,
+            color: isOnline ? palette.green : palette.white_muted,
+            letterSpacing: typography.tracking.wider,
+            marginTop: 2,
+          }}>
+            {isOnline ? '● ONLINE' : `@${item.username}`}
           </Text>
         </View>
 
-        <Text style={{ color: '#444', fontSize: 18 }}>›</Text>
+        <Text style={{ color: palette.white_muted, fontSize: 18 }}>›</Text>
       </TouchableOpacity>
     );
   };
 
   const renderEmpty = () => (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 100 }}>
-      <Text style={{ fontSize: 64, marginBottom: 16 }}>💬</Text>
-      <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 6 }}>
-        Nenhum amigo ainda
+      <Text style={{ fontFamily: typography.fonts.mono, fontSize: 40, color: palette.green, marginBottom: 16 }}>▣</Text>
+      <Text style={{
+        fontFamily: typography.fonts.display, fontSize: typography.size.xl,
+        color: palette.white, marginBottom: 6,
+      }}>
+        nenhum amigo
       </Text>
-      <Text style={{ color: '#555', fontSize: 13, textAlign: 'center', paddingHorizontal: 40 }}>
-        Crie outra conta em outra aba pra testar o chat em tempo real ⚡
+      <Text style={{
+        fontFamily: typography.fonts.mono, fontSize: 11,
+        color: palette.white_muted, letterSpacing: typography.tracking.wider,
+        textAlign: 'center', paddingHorizontal: 40,
+      }}>
+        [ crie outra conta em outra aba ]{'\n'}[ pra testar o chat ]
       </Text>
     </View>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
+    <View style={{ flex: 1, backgroundColor: palette.black_soft }}>
       <View style={{
-        paddingTop: 56, paddingHorizontal: 20, paddingBottom: 16,
-        borderBottomWidth: 1, borderBottomColor: '#1e1e1e',
+        paddingTop: 56, paddingHorizontal: spacing.lg, paddingBottom: spacing.md,
+        borderBottomWidth: 1, borderBottomColor: palette.black_border,
+        backgroundColor: palette.black,
       }}>
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#fff' }}>Mensagens</Text>
-        <Text style={{ color: '#666', fontSize: 13, marginTop: 4 }}>
-          {onlineIds.length} {onlineIds.length === 1 ? 'pessoa online' : 'pessoas online'} · em tempo real
+        <Text style={{
+          fontFamily: typography.fonts.mono,
+          fontSize: 9,
+          color: palette.green,
+          letterSpacing: typography.tracking.widest,
+          marginBottom: 2,
+        }}>
+          ▌ INBOX
+        </Text>
+        <Text style={{
+          fontFamily: typography.fonts.display, fontSize: typography.size.xxl,
+          color: palette.white, letterSpacing: typography.tracking.tight,
+        }}>
+          mensagens
+        </Text>
+        <Text style={{
+          fontFamily: typography.fonts.mono, fontSize: 11,
+          color: palette.white_muted, letterSpacing: typography.tracking.wider,
+          marginTop: 4,
+        }}>
+          [{String(onlineIds.length).padStart(2, '0')}] online · realtime
         </Text>
       </View>
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color={palette.green} />
         </View>
       ) : (
         <FlatList
@@ -119,7 +157,7 @@ export default function Chat() {
           renderItem={renderUser}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8B5CF6" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.green} />}
           ListEmptyComponent={renderEmpty}
         />
       )}

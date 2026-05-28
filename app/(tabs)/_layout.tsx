@@ -1,15 +1,27 @@
 import { Tabs } from 'expo-router';
 import { View, Text } from 'react-native';
+import { palette, typography } from '../../constants/theme';
 
-// Componente customizado de ícone da tab (emoji + label)
-function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
+function TabItem({ icon, label, focused }: { icon: string; label: string; focused: boolean }) {
   return (
-    <View style={{ alignItems: 'center', gap: 2, width: 60 }}>
-      <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
+    <View style={{
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      paddingTop: 8,
+      paddingHorizontal: 14,
+      paddingBottom: 4,
+      borderTopWidth: 2,
+      borderTopColor: focused ? palette.green : 'transparent',
+      width: 72,
+    }}>
+      <Text style={{ fontSize: 18, opacity: focused ? 1 : 0.45 }}>{icon}</Text>
       <Text style={{
-        fontSize: 10,
-        color: focused ? '#8B5CF6' : '#444',
-        fontWeight: focused ? '700' : '400',
+        fontFamily: typography.fonts.mono,
+        fontSize: 9,
+        letterSpacing: 1.5,
+        textTransform: 'uppercase',
+        color: focused ? palette.green : palette.white_muted,
       }}>
         {label}
       </Text>
@@ -23,32 +35,20 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0a0a0a',
-          borderTopColor: '#1e1e1e',
+          backgroundColor: palette.black,
+          borderTopColor: palette.black_border,
           borderTopWidth: 1,
-          paddingTop: 8,
-          paddingBottom: 8,
-          height: 68,
+          height: 64,
+          paddingBottom: 0,
+          paddingTop: 0,
         },
-        tabBarShowLabel: false, // usamos label custom dentro do TabIcon
+        tabBarShowLabel: false,
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="⚡" label="Feed" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="pulse"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="📸" label="Pulso" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="chat"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="💬" label="Chat" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label="Perfil" focused={focused} /> }}
-      />
+      <Tabs.Screen name="index"   options={{ tabBarIcon: ({ focused }) => <TabItem icon="⚡" label="FEED"   focused={focused} /> }} />
+      <Tabs.Screen name="pulse"   options={{ tabBarIcon: ({ focused }) => <TabItem icon="◉"  label="PULSO"  focused={focused} /> }} />
+      <Tabs.Screen name="chat"    options={{ tabBarIcon: ({ focused }) => <TabItem icon="▣"  label="CHAT"   focused={focused} /> }} />
+      <Tabs.Screen name="profile" options={{ tabBarIcon: ({ focused }) => <TabItem icon="◈"  label="PERFIL" focused={focused} /> }} />
     </Tabs>
   );
 }

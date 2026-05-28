@@ -1,11 +1,12 @@
 import {
   View, Text, TouchableOpacity, TextInput,
-  Alert, ActivityIndicator, ScrollView, Image, Platform,
+  Alert, ActivityIndicator, ScrollView, Image,
 } from 'react-native';
 import { useState, useRef } from 'react';
 import { router } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import api from '../../services/api';
+import { palette, typography, radius, spacing } from '../../constants/theme';
 
 const MOODS = ['😊', '🔥', '😌', '😢', '😤', '✨', '🧠', '☕'];
 
@@ -18,100 +19,89 @@ export default function PulseCamera() {
 
   const [caption, setCaption] = useState('');
   const [mood, setMood] = useState('');
+  const [captionFocused, setCaptionFocused] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 1) Pedindo permissão
   if (!permission) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0a', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+      <View style={{ flex: 1, backgroundColor: palette.black_soft, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={palette.green} />
       </View>
     );
   }
 
-  // 2) Sem permissão ainda
   if (!permission.granted) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0a', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <Text style={{ fontSize: 56, marginBottom: 16 }}>📸</Text>
-        <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>
-          Permita o acesso à câmera
+      <View style={{ flex: 1, backgroundColor: palette.black_soft, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <Text style={{
+          fontFamily: typography.fonts.mono, fontSize: 40, color: palette.green, marginBottom: 18,
+        }}>◉</Text>
+        <Text style={{
+          fontFamily: typography.fonts.display, fontSize: typography.size.xl,
+          color: palette.white, marginBottom: 8, textAlign: 'center',
+        }}>
+          acesso à câmera
         </Text>
-        <Text style={{ color: '#666', textAlign: 'center', marginBottom: 28, lineHeight: 22 }}>
-          O PULSE precisa da câmera pra você{'\n'}registrar seus momentos reais.
+        <Text style={{
+          fontFamily: typography.fonts.mono, fontSize: 11,
+          color: palette.white_muted, letterSpacing: typography.tracking.wider,
+          textAlign: 'center', marginBottom: 28,
+        }}>
+          [ PULSE precisa da câmera ]{'\n'}[ pra você registrar momentos reais ]
         </Text>
         <TouchableOpacity
           onPress={requestPermission}
+          activeOpacity={0.8}
           style={{
-            backgroundColor: '#8B5CF6',
-            paddingHorizontal: 32, paddingVertical: 14,
-            borderRadius: 999,
+            backgroundColor: palette.green,
+            paddingHorizontal: spacing.xl, paddingVertical: 14,
+            borderRadius: radius.sm,
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Permitir câmera</Text>
+          <Text style={{
+            fontFamily: typography.fonts.bodyMed, fontSize: typography.size.md,
+            color: palette.black, letterSpacing: typography.tracking.wide,
+          }}>
+            ▶  PERMITIR
+          </Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // 3) Tira a foto (funciona web e celular)
   const takePhoto = async () => {
     if (!cameraRef.current) return;
     try {
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.6,
-        base64: true,
-      });
-
-      // Caminho 1: base64 veio direto
-      // No web, expo-camera às vezes já devolve o data URL completo no campo base64
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.6, base64: true });
       if (photo?.base64) {
-        const uri = photo.base64.startsWith('data:')
-          ? photo.base64
-          : `data:image/jpeg;base64,${photo.base64}`;
+        const uri = photo.base64.startsWith('data:') ? photo.base64 : `data:image/jpeg;base64,${photo.base64}`;
         setPhotoUri(uri);
         return;
       }
-
-      // Caminho 2: só veio o URI (comum no web) — converte pra data URL
       if (photo?.uri) {
         const response = await fetch(photo.uri);
         const blob = await response.blob();
         const reader = new FileReader();
         reader.onloadend = () => {
-          if (typeof reader.result === 'string') {
-            setPhotoUri(reader.result);
-          } else {
-            Alert.alert('Erro', 'Falha ao processar a foto');
-          }
+          if (typeof reader.result === 'string') setPhotoUri(reader.result);
         };
-        reader.onerror = () => Alert.alert('Erro', 'Falha ao ler a foto');
         reader.readAsDataURL(blob);
         return;
       }
-
       Alert.alert('Erro', 'Câmera não retornou imagem');
     } catch (err: any) {
       Alert.alert('Erro', err.message || 'Não foi possível tirar a foto');
     }
   };
 
-  // 4) Publica o pulso
   const handlePost = async () => {
     if (!photoUri) return;
     setLoading(true);
     try {
-      await api.post('/pulses', {
-        imageUrl: photoUri,
-        caption,
-        mood,
-        circle: 'friends',
-      });
-      Alert.alert('🎉 Pulso postado!', 'Vai conferir no feed', [
-        { text: 'Beleza', onPress: () => {
-          setPhotoUri(null);
-          setCaption('');
-          setMood('');
+      await api.post('/pulses', { imageUrl: photoUri, caption, mood, circle: 'friends' });
+      Alert.alert('✓ POSTADO', 'Vai conferir no feed', [
+        { text: 'OK', onPress: () => {
+          setPhotoUri(null); setCaption(''); setMood('');
           router.push('/(tabs)');
         }},
       ]);
@@ -122,151 +112,212 @@ export default function PulseCamera() {
     }
   };
 
-  // 5) Tela de preview + legenda (depois de tirar a foto)
+  // PREVIEW
   if (photoUri) {
     return (
       <ScrollView
-        style={{ flex: 1, backgroundColor: '#0a0a0a' }}
-        contentContainerStyle={{ padding: 24, paddingTop: 60, paddingBottom: 40 }}
+        style={{ flex: 1, backgroundColor: palette.black_soft }}
+        contentContainerStyle={{ padding: spacing.xl, paddingTop: 64, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 16 }}>
-          Confirma seu pulso?
+        <Text style={{
+          fontFamily: typography.fonts.mono, fontSize: 10,
+          color: palette.green, letterSpacing: typography.tracking.widest, marginBottom: 6,
+        }}>
+          ▌ PREVIEW · CONFIRM
+        </Text>
+        <Text style={{
+          fontFamily: typography.fonts.display, fontSize: typography.size.xl,
+          color: palette.white, marginBottom: spacing.lg,
+        }}>
+          confirma o pulso?
         </Text>
 
         <Image
           source={{ uri: photoUri }}
-          style={{ width: '100%', height: 380, borderRadius: 16, marginBottom: 20, backgroundColor: '#141414' }}
+          style={{
+            width: '100%', height: 400, borderRadius: radius.sm,
+            marginBottom: spacing.lg, backgroundColor: palette.black_card,
+            borderWidth: 1, borderColor: palette.green + '40',
+          }}
           resizeMode="cover"
         />
 
-        <Text style={{ color: '#888', fontSize: 13, marginBottom: 8, fontWeight: '600' }}>
-          Legenda
+        <Text style={{
+          fontFamily: typography.fonts.mono, fontSize: typography.size.xs,
+          color: captionFocused ? palette.green : palette.white_muted,
+          letterSpacing: typography.tracking.widest,
+          textTransform: 'uppercase', marginBottom: 6,
+        }}>
+          // legenda
         </Text>
         <TextInput
           placeholder="O que tá rolando agora?"
-          placeholderTextColor="#444"
+          placeholderTextColor={palette.white_ghost}
           value={caption}
           onChangeText={setCaption}
+          onFocus={() => setCaptionFocused(true)}
+          onBlur={() => setCaptionFocused(false)}
           maxLength={280}
           multiline
           style={{
-            backgroundColor: '#141414', color: '#fff',
-            padding: 14, borderRadius: 12,
-            borderWidth: 1, borderColor: '#1e1e1e',
-            fontSize: 15, marginBottom: 20,
-            minHeight: 70, textAlignVertical: 'top',
+            backgroundColor: palette.black_raised,
+            color: palette.white,
+            fontFamily: typography.fonts.body,
+            fontSize: typography.size.md,
+            padding: 14,
+            borderRadius: radius.sm,
+            borderWidth: 1,
+            borderColor: captionFocused ? palette.green : palette.black_border,
+            borderLeftWidth: captionFocused ? 2 : 1,
+            borderLeftColor: captionFocused ? palette.green : palette.black_border,
+            marginBottom: spacing.lg,
+            minHeight: 80,
+            textAlignVertical: 'top',
           }}
         />
 
-        <Text style={{ color: '#888', fontSize: 13, marginBottom: 8, fontWeight: '600' }}>
-          Como você tá?
+        <Text style={{
+          fontFamily: typography.fonts.mono, fontSize: typography.size.xs,
+          color: palette.white_muted, letterSpacing: typography.tracking.widest,
+          textTransform: 'uppercase', marginBottom: 8,
+        }}>
+          // mood
         </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.xl }}>
           {MOODS.map(m => (
             <TouchableOpacity
               key={m}
               onPress={() => setMood(mood === m ? '' : m)}
+              activeOpacity={0.7}
               style={{
-                padding: 10, borderRadius: 12,
-                backgroundColor: mood === m ? '#8B5CF620' : '#141414',
+                padding: 10,
+                borderRadius: radius.sm,
+                backgroundColor: mood === m ? palette.green + '20' : palette.black_raised,
                 borderWidth: 1,
-                borderColor: mood === m ? '#8B5CF6' : '#1e1e1e',
+                borderColor: mood === m ? palette.green : palette.black_border,
+                borderLeftWidth: mood === m ? 2 : 1,
+                borderLeftColor: mood === m ? palette.green : palette.black_border,
               }}
             >
-              <Text style={{ fontSize: 24 }}>{m}</Text>
+              <Text style={{ fontSize: 22 }}>{m}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Botão postar */}
         <TouchableOpacity
           onPress={handlePost}
           disabled={loading}
+          activeOpacity={0.8}
           style={{
-            backgroundColor: '#8B5CF6', padding: 18,
-            borderRadius: 999, alignItems: 'center',
-            opacity: loading ? 0.7 : 1, marginBottom: 12,
+            backgroundColor: palette.green,
+            height: 52,
+            borderRadius: radius.sm,
+            alignItems: 'center', justifyContent: 'center',
+            opacity: loading ? 0.6 : 1,
+            marginBottom: 10,
           }}
         >
           {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Postar pulso</Text>
+            ? <ActivityIndicator color={palette.black} />
+            : (
+              <Text style={{
+                fontFamily: typography.fonts.bodyMed,
+                fontSize: typography.size.md,
+                color: palette.black,
+                letterSpacing: typography.tracking.wide,
+              }}>
+                ▶  POSTAR PULSO
+              </Text>
+            )
           }
         </TouchableOpacity>
 
-        {/* Tirar outra */}
         <TouchableOpacity
           onPress={() => setPhotoUri(null)}
           disabled={loading}
+          activeOpacity={0.7}
           style={{
-            borderWidth: 1, borderColor: '#1e1e1e',
-            padding: 16, borderRadius: 999, alignItems: 'center',
+            borderWidth: 1,
+            borderColor: palette.black_border,
+            height: 48,
+            borderRadius: radius.sm,
+            alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <Text style={{ color: '#888', fontWeight: '600' }}>Tirar outra</Text>
+          <Text style={{
+            fontFamily: typography.fonts.mono,
+            fontSize: typography.size.sm,
+            color: palette.white_dim,
+            letterSpacing: typography.tracking.wide,
+          }}>
+            ↺  tirar outra
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     );
   }
 
-  // 6) Câmera ao vivo
+  // CÂMERA AO VIVO
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
-      <CameraView
-        ref={cameraRef}
-        style={{ flex: 1 }}
-        facing={facing}
-      >
-        {/* Overlay no topo */}
+    <View style={{ flex: 1, backgroundColor: palette.black }}>
+      <CameraView ref={cameraRef} style={{ flex: 1 }} facing={facing}>
         <View style={{ paddingTop: 56, paddingHorizontal: 20, alignItems: 'center' }}>
           <View style={{
-            backgroundColor: '#00000080',
-            paddingHorizontal: 14, paddingVertical: 6,
-            borderRadius: 999, borderWidth: 1, borderColor: '#EC489960',
+            backgroundColor: palette.black + 'cc',
+            borderWidth: 1,
+            borderColor: palette.green + '60',
+            borderLeftWidth: 2,
+            borderLeftColor: palette.green,
+            paddingHorizontal: 12, paddingVertical: 6,
+            borderRadius: radius.sm,
           }}>
-            <Text style={{ color: '#EC4899', fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>
-              MOMENTO DO PULSO
+            <Text style={{
+              fontFamily: typography.fonts.mono,
+              fontSize: 10,
+              color: palette.green,
+              letterSpacing: typography.tracking.widest,
+            }}>
+              ▌ CAPTURE · LIVE
             </Text>
           </View>
         </View>
 
-        {/* Controles na base */}
         <View style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           paddingBottom: 40, paddingHorizontal: 32,
           flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          {/* Espaço esquerdo */}
           <View style={{ width: 56 }} />
 
-          {/* Botão tirar foto (grande) */}
           <TouchableOpacity
             onPress={takePhoto}
+            activeOpacity={0.85}
             style={{
-              width: 80, height: 80, borderRadius: 40,
-              backgroundColor: '#fff',
+              width: 78, height: 78, borderRadius: 39,
+              backgroundColor: palette.green,
               alignItems: 'center', justifyContent: 'center',
-              borderWidth: 4, borderColor: '#8B5CF6',
+              borderWidth: 4, borderColor: palette.black,
             }}
           >
             <View style={{
-              width: 64, height: 64, borderRadius: 32,
-              backgroundColor: '#fff', borderWidth: 2, borderColor: '#0a0a0a',
+              width: 60, height: 60, borderRadius: 30,
+              backgroundColor: palette.green,
+              borderWidth: 2, borderColor: palette.black,
             }} />
           </TouchableOpacity>
 
-          {/* Botão trocar câmera */}
           <TouchableOpacity
             onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
+            activeOpacity={0.75}
             style={{
               width: 56, height: 56, borderRadius: 28,
-              backgroundColor: '#00000080',
+              backgroundColor: palette.black + 'cc',
               alignItems: 'center', justifyContent: 'center',
-              borderWidth: 1, borderColor: '#ffffff30',
+              borderWidth: 1, borderColor: palette.green + '50',
             }}
           >
-            <Text style={{ fontSize: 24 }}>🔄</Text>
+            <Text style={{ color: palette.green, fontSize: 18 }}>↻</Text>
           </TouchableOpacity>
         </View>
       </CameraView>

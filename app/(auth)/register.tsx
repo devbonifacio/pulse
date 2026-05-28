@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Link } from 'expo-router';
 import { useAuthStore } from '../../store/useAuthStore';
 import api from '../../services/api';
+import { palette, typography, radius, spacing } from '../../constants/theme';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -13,6 +14,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const { setAuth } = useAuthStore();
 
   const handleRegister = async () => {
@@ -25,108 +27,146 @@ export default function Register() {
       return;
     }
     setLoading(true);
-
     try {
-      // 🌐 Chamada REAL pra API
-      const { data } = await api.post('/auth/register', {
-        name,
-        username,
-        email,
-        password,
-      });
-
-      // O backend já devolve token — login automático após cadastro 🪄
+      const { data } = await api.post('/auth/register', { name, username, email, password });
       await setAuth(data.token, data.user);
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Não foi possível criar a conta.';
-      Alert.alert('Erro', msg);
+      Alert.alert('Erro', err.response?.data?.message || 'Não foi possível criar a conta.');
     } finally {
       setLoading(false);
     }
   };
 
-  const inputStyle = {
-    backgroundColor: '#141414',
-    color: '#fff' as const,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#1e1e1e',
-    fontSize: 16,
+  const renderInput = (field: string, label: string, value: string, setValue: (v: string) => void, opts: any = {}) => {
+    const isFocused = focusedField === field;
+    return (
+      <View style={{ marginBottom: spacing.md }}>
+        <Text style={{
+          fontFamily: typography.fonts.mono,
+          fontSize: typography.size.xs,
+          letterSpacing: typography.tracking.widest,
+          color: isFocused ? palette.green : palette.white_muted,
+          textTransform: 'uppercase',
+          marginBottom: 6,
+        }}>
+          // {label}
+        </Text>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: palette.black_raised,
+          borderWidth: 1,
+          borderColor: isFocused ? palette.green : palette.black_border,
+          borderLeftWidth: isFocused ? 2 : 1,
+          borderLeftColor: isFocused ? palette.green : palette.black_border,
+          borderRadius: radius.sm,
+          paddingHorizontal: 14,
+          height: 52,
+        }}>
+          {opts.prefix && (
+            <Text style={{ fontFamily: typography.fonts.mono, color: palette.white_muted, marginRight: 2 }}>
+              {opts.prefix}
+            </Text>
+          )}
+          <TextInput
+            placeholder={opts.placeholder}
+            placeholderTextColor={palette.white_ghost}
+            value={value}
+            onChangeText={setValue}
+            onFocus={() => setFocusedField(field)}
+            onBlur={() => setFocusedField(null)}
+            keyboardType={opts.keyboard}
+            autoCapitalize={opts.autoCapitalize ?? 'sentences'}
+            secureTextEntry={opts.secure}
+            style={{
+              flex: 1,
+              fontFamily: typography.fonts.mono,
+              fontSize: typography.size.md,
+              color: palette.white,
+            }}
+          />
+        </View>
+      </View>
+    );
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1, backgroundColor: '#0a0a0a' }}
+      style={{ flex: 1, backgroundColor: palette.black_soft }}
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: spacing.xl }}>
 
-        <View style={{ alignItems: 'center', marginBottom: 40 }}>
-          <Text style={{ fontSize: 42, fontWeight: '900', color: '#8B5CF6', letterSpacing: -2 }}>
-            PULSE
+        <View style={{ marginBottom: spacing.xl }}>
+          <Text style={{
+            fontFamily: typography.fonts.mono,
+            fontSize: typography.size.xs,
+            color: palette.green,
+            letterSpacing: typography.tracking.widest,
+            marginBottom: 8,
+          }}>
+            ▌ NEW USER · INIT
           </Text>
-          <Text style={{ color: '#444', fontSize: 14, marginTop: 6 }}>
-            cria tua conta
+          <Text style={{
+            fontFamily: typography.fonts.display,
+            fontSize: typography.size.xxl,
+            color: palette.white,
+            letterSpacing: typography.tracking.tight,
+          }}>
+            criar conta
           </Text>
         </View>
 
-        <TextInput
-          placeholder="Nome completo"
-          placeholderTextColor="#444"
-          value={name}
-          onChangeText={setName}
-          style={inputStyle}
-        />
-        <TextInput
-          placeholder="Username (ex: boni)"
-          placeholderTextColor="#444"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          style={inputStyle}
-        />
-        <TextInput
-          placeholder="Email"
-          placeholderTextColor="#444"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          style={inputStyle}
-        />
-        <TextInput
-          placeholder="Senha (mín. 6 caracteres)"
-          placeholderTextColor="#444"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          style={{ ...inputStyle, marginBottom: 28 }}
-        />
+        {renderInput('name', 'nome', name, setName, { placeholder: 'Bonifácio Junior' })}
+        {renderInput('username', 'username', username, setUsername, {
+          placeholder: 'boni', prefix: '@', autoCapitalize: 'none',
+        })}
+        {renderInput('email', 'email', email, setEmail, {
+          placeholder: 'user@pulse.app', keyboard: 'email-address', autoCapitalize: 'none',
+        })}
+        {renderInput('password', 'senha (mín. 6)', password, setPassword, {
+          placeholder: '••••••••', secure: true,
+        })}
 
         <TouchableOpacity
           onPress={handleRegister}
           disabled={loading}
+          activeOpacity={0.8}
           style={{
-            backgroundColor: '#8B5CF6',
-            padding: 18,
-            borderRadius: 999,
+            backgroundColor: palette.green,
+            height: 52,
+            borderRadius: radius.sm,
             alignItems: 'center',
-            opacity: loading ? 0.7 : 1,
+            justifyContent: 'center',
+            opacity: loading ? 0.6 : 1,
+            marginTop: spacing.md,
           }}
         >
           {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Criar conta</Text>
+            ? <ActivityIndicator color={palette.black} />
+            : (
+              <Text style={{
+                fontFamily: typography.fonts.bodyMed,
+                fontSize: typography.size.md,
+                color: palette.black,
+                letterSpacing: typography.tracking.wide,
+              }}>
+                ▶  CRIAR CONTA
+              </Text>
+            )
           }
         </TouchableOpacity>
 
         <Link href="/(auth)/login" asChild>
-          <TouchableOpacity style={{ marginTop: 24, alignItems: 'center' }}>
-            <Text style={{ color: '#666' }}>
-              Já tem conta?{'  '}
-              <Text style={{ color: '#8B5CF6', fontWeight: '600' }}>Entrar</Text>
+          <TouchableOpacity style={{ marginTop: spacing.xl, alignItems: 'center' }}>
+            <Text style={{
+              fontFamily: typography.fonts.mono,
+              fontSize: typography.size.sm,
+              color: palette.white_muted,
+              letterSpacing: typography.tracking.wide,
+            }}>
+              já tem conta?{'  '}
+              <Text style={{ color: palette.green }}>← entrar</Text>
             </Text>
           </TouchableOpacity>
         </Link>

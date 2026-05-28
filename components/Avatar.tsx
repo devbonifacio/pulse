@@ -1,75 +1,64 @@
 import { View, Text } from 'react-native';
+import { palette, typography } from '../constants/theme';
 
-// Paleta de cores pros avatares
-const COLORS = [
-  '#8B5CF6', '#EC4899', '#10B981', '#F59E0B',
-  '#3B82F6', '#EF4444', '#14B8A6', '#A855F7',
-];
+type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
-// Hash simples pra mapear nome → cor (mesmo nome = mesma cor sempre)
-function colorFromName(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return COLORS[Math.abs(hash) % COLORS.length];
-}
+const sizesMap: Record<AvatarSize, number> = { xs: 24, sm: 32, md: 40, lg: 56, xl: 96 };
+const fontMap: Record<AvatarSize, number> = { xs: 10, sm: 12, md: 14, lg: 20, xl: 32 };
 
-// Pega as iniciais (até 2 letras)
-function getInitials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('');
+function sizeKeyFromNumber(n: number): AvatarSize {
+  if (n <= 26) return 'xs';
+  if (n <= 34) return 'sm';
+  if (n <= 44) return 'md';
+  if (n <= 70) return 'lg';
+  return 'xl';
 }
 
 interface AvatarProps {
   name: string;
-  size?: number;
+  size?: AvatarSize | number;
   online?: boolean;
   showRing?: boolean;
+  circleType?: 'intimate' | 'friends' | 'acquaintances';
 }
 
-export function Avatar({ name, size = 48, online, showRing }: AvatarProps) {
-  const color = colorFromName(name);
-  const initials = getInitials(name);
-  const dotSize = Math.max(10, size * 0.26);
+export function Avatar({ name, size = 'md', online, showRing, circleType }: AvatarProps) {
+  const dim = typeof size === 'number' ? size : sizesMap[size];
+  const fontSize = typeof size === 'number' ? fontMap[sizeKeyFromNumber(size)] : fontMap[size];
+  const initials = (name || '?').split(' ').map(n => n[0] ?? '').slice(0, 2).join('').toUpperCase() || '?';
+  const accent = circleType ? palette.circles[circleType] : palette.green;
+  const dot = Math.max(8, dim * 0.22);
 
   return (
-    <View style={{ width: size, height: size }}>
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: `${color}25`, // 25 = ~15% opacity
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: showRing ? 2 : 1,
-          borderColor: showRing ? color : `${color}50`,
-        }}
-      >
-        <Text style={{ color, fontWeight: '700', fontSize: size * 0.36 }}>
-          {initials || '?'}
+    <View style={{ width: dim, height: dim }}>
+      <View style={{
+        width: dim,
+        height: dim,
+        borderRadius: dim / 2,
+        backgroundColor: accent + '18',
+        borderWidth: showRing ? 2 : 1,
+        borderColor: accent + (showRing ? 'cc' : '50'),
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <Text style={{
+          fontFamily: typography.fonts.monoBold,
+          fontSize,
+          color: accent,
+          letterSpacing: -0.5,
+        }}>
+          {initials}
         </Text>
       </View>
-
-      {online && (
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            right: 0,
-            width: dotSize,
-            height: dotSize,
-            borderRadius: dotSize / 2,
-            backgroundColor: '#10B981',
-            borderWidth: 2,
-            borderColor: '#0a0a0a',
-          }}
-        />
+      {online !== undefined && (
+        <View style={{
+          position: 'absolute',
+          bottom: 0, right: 0,
+          width: dot, height: dot, borderRadius: dot / 2,
+          backgroundColor: online ? palette.online : palette.offline,
+          borderWidth: 1.5,
+          borderColor: palette.black_card,
+        }} />
       )}
     </View>
   );
